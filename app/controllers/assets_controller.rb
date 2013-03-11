@@ -11,23 +11,25 @@ class AssetsController < ApplicationController
   end
 
   def new
-    @asset = current_user.assets.new
+    @asset = current_user.assets.build
     if params[:folder_id] #if we want to upload a file inside another folder
       @current_folder = current_user.folders.find(params[:folder_id])
       @asset.folder_id = @current_folder.id
     end
   end
 
+
+
+
   def create
-    @asset = current_user.assets.new(params[:asset])
+    @asset = current_user.assets.build(params[:asset])
     if @asset.save
       flash[:notice] = "Successfully uploaded the file."
 
       if @asset.folder #checking if we have a parent folder for this file
         redirect_to browse_path(@asset.folder)  #then we redirect to the parent folder
       else
-        #redirect_to root_url
-        redirect_to assets_path
+        redirect_to root_url
       end
     else
       render :action => 'new'
@@ -62,29 +64,20 @@ class AssetsController < ApplicationController
   end
 
   def get
-
-    # first find the asset within own assets
+    #first find the asset within own assets
     asset = current_user.assets.find_by_id(params[:id])
 
-    # if not found in own assets, check if the current_user has share access to the parent folder of the file
+    #if not found in own assets, check if the current_user has share access to the parent folder of the File
     asset ||= Asset.find(params[:id]) if current_user.has_share_access?(Asset.find_by_id(params[:id]).folder)
 
     if asset
-      # Parse the URL for special characters first before downloading
-      #data = open(asset.uploaded_file.url)
-
-      # use the send_data method to send the above bindary "data" as a file
-      #send_data data, :filename => asset.file_name
-
-
-      send_file asset.uploaded_file.path, :type => asset.uploaded_file_content_type
-
-
-      #redirect to amazon S3 url which will let the user download the file automatically
-      # redirect_to asset.uploaded_file.url, :type => asset.uploaded_file_content_type
+      #Parse the URL for special characters first before downloading
+      data = open(URI.parse(URI.encode(asset.uploaded_file.url)))
+      send_data data, :filename => asset.uploaded_file_file_name
+      #redirect_to asset.uploaded_file.url
     else
       flash[:error] = "Don't be cheeky! Mind your own assets!"
-      redirect_to assets_path
+      redirect_to root_url
     end
   end
 
